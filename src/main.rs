@@ -83,7 +83,7 @@ async fn full_scan(IPAddress : String){
                                 // Additional actions for an open port can be added here
                                 let inf =json.get(port.to_string());
                                 if inf.is_some() {
-                                    println!("{:?}",inf.unwrap());
+                                    println!("{:?}",inf.unwrap().as_array()[0]);
                                 }
                             }
                         }
