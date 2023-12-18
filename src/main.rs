@@ -11,8 +11,8 @@ use clap::{arg, Command};
 
 
 
-
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Portscanner");
     println!("Developed and managed by Triophore");
     
@@ -37,87 +37,72 @@ fn main() {
 
 
         if matches.get_one::<String>("mode").unwrap() == "F" {
-            full_scan(matches.get_one::<String>("h").unwrap().to_string())
+            full_scan(matches.get_one::<String>("h").unwrap().to_string()).await;
         }
 
         if matches.get_one::<String>("mode").unwrap() == "Q" {
             
         }
 
+        
 
-    // let menu = menu(vec![
-
-    //     // label:
-    //     //  not selectable, useful as a title, separator, etc...
-    //     label("----------------------"),
-    //     label("terminal-menu"),
-    //     label("use wasd or arrow keys"),
-    //     label("enter to select"),
-    //     label("'q' or esc to exit"),
-    //     label("-----------------------"),
-
-    //     // button:
-    //     //  exit the menu
-    //     button("Popular Ports (quick)"),
-    //     button("Full Ports (slow)"),
-    //     // button("Charlie")
-
-    // ]);
-    // run(&menu);
-
-    // // you can get the selected buttons name like so:
-    // println!("Selected: {}", mut_menu(&menu).selected_item_name());
-
-    // let op = String::from(mut_menu(&menu).selected_item_name());
-
-    // match op.as_ref() {
-    //     "Full Ports (slow)" => {
-    //         println!("full scan started !");
-    //     },
-    //     "Popular Ports (quick)" => {
-    //         println!("quick scan started !");
-    //     },
-    //     _ =>{
-    //         println!("Invalid Option");
-    //         std::process::exit(0);
-    //     }
-    // }
 
 }
 
 
-fn full_scan(IPAddress : String){
+async fn full_scan(IPAddress : String){
     let target = IPAddress.as_str(); // Change this to the IP address you want to scan
-    let timeout = Duration::from_millis(100); // Adjust the timeout duration as needed
+    let timeout = Duration::from_millis(300); // Adjust the timeout duration as needed
 
-    println!("Starting to download ports DB !{}");
+    println!("Starting to download ports DB !");
 
-    
+    let case_study_url = format!("https://raw.githubusercontent.com/Triophore/portscan/main/ports.json");
 
-    println!("Scanning ports on {}", target);
+    println!("Encoded URL {}",case_study_url.clone());
 
-    let mut Res : HashMap<String,String> = HashMap::new();
+    match reqwest::get(case_study_url).await {
+         Ok(resp) => {
+            let json: serde_json::Value = resp.json().await.unwrap();
+            //println!("{:?}",json);
 
-    let port_range = 1..=65535; 
 
-     // Resolve the hostname to IP addresses
-     
-     for port in port_range {
-        let target_address = format!("{}:{}", target, port);
-        match target_address.to_socket_addrs() {
-            Ok(mut addrs) => {
-                if let Some(target_addr) = addrs.next() {
-                    //println!("Trying on {}",target_addr.clone());
-                    if let Ok(socket) = TcpStream::connect_timeout(&target_addr,timeout) {
-                        println!("Port {} is open", port);
-                        // Additional actions for an open port can be added here
+            println!("Scanning ports on {}", target);
+
+            let mut Res : HashMap<String,String> = HashMap::new();
+        
+            let port_range = 1..=65535;
+
+            for port in port_range {
+                let target_address = format!("{}:{}", target, port);
+                match target_address.to_socket_addrs() {
+                    Ok(mut addrs) => {
+                        if let Some(target_addr) = addrs.next() {
+                            //println!("Trying on {}",target_addr.clone());
+                            if let Ok(socket) = TcpStream::connect_timeout(&target_addr,timeout) {
+                                println!("Port {} is open", port);
+                                // Additional actions for an open port can be added here
+                                let inf =json.get(port.to_string());
+                                if inf.is_some() {
+                                    println!("{:?}",inf.unwrap());
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("Failed to resolve the target address for port {}: {}", port, e);
                     }
                 }
             }
-            Err(e) => {
-                println!("Failed to resolve the target address for port {}: {}", port, e);
-            }
-        }
+         }
+         Err(err) => {
+            println!("Reqwest Error: {}", err)
+         }
     }
+
+ 
+
+     // Resolve the hostname to IP addresses
+     
+  
 
 }
